@@ -162,9 +162,9 @@ func init() {
 			robot_wxid = jms.RobotWxid
 			wx.Set("robot_wxid", robot_wxid)
 		}
-		core.Senders <- &Sender{
-			value: jms,
-		}
+		// core.Senders <- &Sender{
+		// 	value: jms,
+		// }
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
 			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
