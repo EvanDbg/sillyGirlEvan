@@ -186,6 +186,7 @@ func init() {
 			data, _ := json.Marshal(pusherMsg)
 			req.Body(data)
 			req.Response()
+			c.JSON(200, map[string]string{"code": "999"})
 		}
 	})
 	core.Server.GET("/relay", func(c *gin.Context) {
