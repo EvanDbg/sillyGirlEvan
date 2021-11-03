@@ -165,28 +165,28 @@ func init() {
 		core.Senders <- &Sender{
 			value: jms,
 		}
-		// pusherTitle := jms.FinalFromName
-		// if jms.FinalFromName != jms.FromName {
-		// 	pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
-		// }
-		// pusherMsg := PusherMsg{
-		// 	AppID: "com.tencent.xin",
-		// 	AppName: "",
-		// 	DeviceName: "",
-		// 	Title: pusherTitle,
-		// 	Subtitle: "",
-		// 	Message: fmt.Sprintf("%s", jms.Msg),
-		// }
-		// apikey := wx.Get("apikey")
-		// dbCode := wx.Get("dbCode")
-		// if apikey != "" && dbCode != "" {
-			// req := httplib.Post(fmt.Sprintf("http://notifications-%s.restdb.io/rest/notifications", dbCode))
-			// req.Header("Content-Type", "application/json")
-			// req.Header("x-apikey", apikey)
-			// data, _ := json.Marshal(pusherMsg)
-			// req.Body(data)
-			// req.Response()
-		// }
+		pusherTitle := jms.FinalFromName
+		if jms.FinalFromName != jms.FromName {
+			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
+		}
+		pusherMsg := PusherMsg{
+			AppID: "com.tencent.xin",
+			AppName: "",
+			DeviceName: "",
+			Title: pusherTitle,
+			Subtitle: "",
+			Message: fmt.Sprintf("%s", jms.Msg),
+		}
+		apikey := wx.Get("apikey")
+		dbCode := wx.Get("dbCode")
+		if apikey != "" && dbCode != "" {
+			req := httplib.Post(fmt.Sprintf("http://notifications-%s.restdb.io/rest/notifications", dbCode))
+			req.Header("Content-Type", "application/json")
+			req.Header("x-apikey", apikey)
+			data, _ := json.Marshal(pusherMsg)
+			req.Body(data)
+			req.Response()
+		}
 		// c.JSON(200, map[string]string{"code": "-1"})
 	})
 	core.Server.GET("/relay", func(c *gin.Context) {
