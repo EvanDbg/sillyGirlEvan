@@ -171,8 +171,8 @@ func init() {
 		}
 		pusherMsg := PusherMsg{
 			AppID: "com.tencent.xin",
-			AppName: "微信",
-			DeviceName: "EVAN's iPhone12",
+			AppName: "",
+			DeviceName: "",
 			Title: pusherTitle,
 			Subtitle: "",
 			Message: fmt.Sprintf("%s", jms.Msg),
