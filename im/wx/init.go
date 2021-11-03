@@ -87,6 +87,15 @@ type OtherMsg struct {
 	Msg        Msg    `json:"msg"`
 }
 
+type PusherMsg struct {
+	Subtitle    	string `json:"subtitle"`
+	Title    			string `json:"title"`
+	AppName    		string `json:"appName"`
+	AppID    			string `json:"appID"`
+	DeviceName    string `json:"deviceName"`
+	Message    		string `json:"message"`
+}
+
 type Msg struct {
 	URL  string `json:"url"`
 	Name string `json:"name"`
@@ -155,6 +164,28 @@ func init() {
 		}
 		core.Senders <- &Sender{
 			value: jms,
+		}
+		pusherTitle := jms.final_from_name
+		if jms.final_from_name != jms.from_name {
+			pusherTitle := fmt.Sprintf("%s@%s", jms.final_from_name, jms.from_name)
+		}
+		pusherMsg := PusherMsg{
+			AppID: "com.tencent.xin",
+			AppName: "微信",
+			DeviceName: "EVAN's iPhone12",
+			Title: pusherTitle,
+			Subtitle: "",
+			Message: jms.msg
+		}
+		apikey := wx.Get("x-apikey")
+		dbCode := wx.Get("dbCode")
+		if apikey && dbCode {
+			req := httplib.Post(fmt.Sprintf("https://notifications-%s.restdb.io/rest/notifications", dbCode))
+			req.Header("Content-Type", "application/json")
+			req.Header("x-apikey", apikey)
+			data, _ := json.Marshal(pusherMsg)
+			req.Body(data)
+			req.Response()
 		}
 	})
 	core.Server.GET("/relay", func(c *gin.Context) {
