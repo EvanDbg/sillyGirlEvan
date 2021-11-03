@@ -144,7 +144,7 @@ func init() {
 		data, _ := c.GetRawData()
 		jms := JsonMsg{}
 		json.Unmarshal(data, &jms)
-		c.JSON(200, map[string]string{"code": "-1"})
+		c.JSON(200, map[string]string{"code": "1023"})
 		if jms.Event != "EventFriendMsg" && jms.Event != "EventGroupMsg" {
 			return
 		}
@@ -186,8 +186,8 @@ func init() {
 			data, _ := json.Marshal(pusherMsg)
 			req.Body(data)
 			req.Response()
-			c.JSON(200, map[string]string{"code": "999"})
 		}
+		c.JSON(200, map[string]string{"code": "-1"})
 	})
 	core.Server.GET("/relay", func(c *gin.Context) {
 		url := c.Query("url")
