@@ -165,9 +165,9 @@ func init() {
 		core.Senders <- &Sender{
 			value: jms,
 		}
-		pusherTitle := jms.final_from_name
-		if jms.final_from_name != jms.from_name {
-			pusherTitle := fmt.Sprintf("%s@%s", jms.final_from_name, jms.from_name)
+		pusherTitle := jms.FinalFromName
+		if jms.FinalFromName != jms.FromName {
+			pusherTitle := fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 		pusherMsg := PusherMsg{
 			AppID: "com.tencent.xin",
@@ -175,11 +175,11 @@ func init() {
 			DeviceName: "EVAN's iPhone12",
 			Title: pusherTitle,
 			Subtitle: "",
-			Message: jms.msg,
+			Message: jms.Msg,
 		}
 		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
-		if apikey && dbCode {
+		if apikey != "" && dbCode != "" {
 			req := httplib.Post(fmt.Sprintf("https://notifications-%s.restdb.io/rest/notifications", dbCode))
 			req.Header("Content-Type", "application/json")
 			req.Header("x-apikey", apikey)
