@@ -167,7 +167,7 @@ func init() {
 		}
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
-			pusherTitle := fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
+			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 		pusherMsg := PusherMsg{
 			AppID: "com.tencent.xin",
