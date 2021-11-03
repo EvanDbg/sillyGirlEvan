@@ -175,7 +175,7 @@ func init() {
 			DeviceName: "EVAN's iPhone12",
 			Title: pusherTitle,
 			Subtitle: "",
-			Message: jms.Msg,
+			Message: fmt.Println("string", jms.Msg.(string)),
 		}
 		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
