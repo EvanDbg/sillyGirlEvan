@@ -276,6 +276,7 @@ func (sender *Sender) IsAdmin() bool {
 	return strings.Contains(wx.Get("masters"), fmt.Sprint(sender.GetUserID()))
 }
 func (sender *Sender) Reply(msgs ...interface{}) (int, error) {
+	/*
 	to := sender.value.FromWxid
 	at := ""
 	if to == "" {
@@ -315,6 +316,7 @@ func (sender *Sender) Reply(msgs ...interface{}) (int, error) {
 	if pmsg.Msg != "" {
 		sendTextMsg(&pmsg)
 	}
+	*/
 	return 0, nil
 }
 
