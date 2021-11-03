@@ -177,7 +177,7 @@ func init() {
 			Subtitle: "",
 			Message: jms.msg
 		}
-		apikey := wx.Get("x-apikey")
+		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
 		if apikey && dbCode {
 			req := httplib.Post(fmt.Sprintf("https://notifications-%s.restdb.io/rest/notifications", dbCode))
