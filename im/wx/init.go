@@ -180,12 +180,12 @@ func init() {
 		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
 		if apikey != "" && dbCode != "" {
-			req := httplib.Post(fmt.Sprintf("http://notifications-%s.restdb.io/rest/notifications", dbCode))
-			req.Header("Content-Type", "application/json")
-			req.Header("x-apikey", apikey)
-			data, _ := json.Marshal(pusherMsg)
-			req.Body(data)
-			req.Response()
+			// req := httplib.Post(fmt.Sprintf("http://notifications-%s.restdb.io/rest/notifications", dbCode))
+			// req.Header("Content-Type", "application/json")
+			// req.Header("x-apikey", apikey)
+			// data, _ := json.Marshal(pusherMsg)
+			// req.Body(data)
+			// req.Response()
 		}
 		c.JSON(200, map[string]string{"code": "-1"})
 	})
