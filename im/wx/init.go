@@ -144,18 +144,21 @@ func init() {
 		data, _ := c.GetRawData()
 		jms := JsonMsg{}
 		json.Unmarshal(data, &jms)
-		c.JSON(200, map[string]string{"code": "1023"})
 		if jms.Event != "EventFriendMsg" && jms.Event != "EventGroupMsg" {
+			c.JSON(200, map[string]string{"code": "1023"})
 			return
 		}
 		if jms.Type != 1 && jms.Type != 3 {
+			c.JSON(200, map[string]string{"code": "1023"})
 			return
 		}
 		if jms.FinalFromWxid == jms.RobotWxid {
+			c.JSON(200, map[string]string{"code": "1023"})
 			return
 		}
 		listen := wx.Get("onGroups")
 		if jms.Event == "EventGroupMsg" && listen != "" && !strings.Contains(listen, strings.Replace(fmt.Sprint(jms.FromWxid), "@chatroom", "", -1)) {
+			c.JSON(200, map[string]string{"code": "1023"})
 			return
 		}
 		if robot_wxid != jms.RobotWxid {
