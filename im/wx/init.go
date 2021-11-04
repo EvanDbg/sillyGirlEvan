@@ -187,7 +187,7 @@ func init() {
 			req.Body(data)
 			req.Response()
 		}
-		// c.JSON(200, map[string]string{"code": "-1"})
+		c.JSON(200, map[string]string{"code": "666"})
 	})
 	core.Server.GET("/relay", func(c *gin.Context) {
 		url := c.Query("url")
