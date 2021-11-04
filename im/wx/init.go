@@ -190,6 +190,7 @@ func init() {
 			req.Body(data)
 			req.Response()
 			c.JSON(200, map[string]string{"code": "999"})
+			return
 		}
 		c.JSON(200, map[string]string{"code": "666"})
 	})
