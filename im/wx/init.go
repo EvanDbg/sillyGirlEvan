@@ -165,9 +165,9 @@ func init() {
 			robot_wxid = jms.RobotWxid
 			wx.Set("robot_wxid", robot_wxid)
 		}
-		core.Senders <- &Sender{
-			value: jms,
-		}
+		//core.Senders <- &Sender{
+		//	value: jms,
+		//}
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
 			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
@@ -183,7 +183,7 @@ func init() {
 		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
 		if apikey != "" && dbCode != "" {
-			req := httplib.Post(fmt.Sprintf("http://notifications-%s.restdb.io/rest/notifications", dbCode))
+			req := httplib.Post(fmt.Sprintf("https://notifications-%s.restdb.io/rest/notifications", dbCode))
 			req.Header("Content-Type", "application/json")
 			req.Header("x-apikey", apikey)
 			data, _ := json.Marshal(pusherMsg)
