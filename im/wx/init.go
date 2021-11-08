@@ -184,13 +184,13 @@ func init() {
 		}
 
 		msgBk := fmt.Sprintf("%s", jms.Msg)
-		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindAllStringSubmatch(msgBk, -1)
-		atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindAllStringSubmatch(msgBk, -1)
+		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindStringSubmatch(msgBk)
+		atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindStringSubmatch(msgBk)
 		// wxids = regexp.MustCompile(`(?<=wxid=)(.+?)(?=])`).FindAllStringSubmatch(jms.Msg, -1)
 		
 		if len(atOld) > 0 {
 			for i := 0; i < len(atOld); i++ {
-			  msgBk = strings.Replace(msgBk, atOld[i], mt.Sprintf(`@%s`, atNew[i]), -1)
+			  msgBk = strings.Replace(msgBk, atOld[i], fmt.Sprintf(`@%s`, atNew[i]), -1)
 			}
 		}
 
