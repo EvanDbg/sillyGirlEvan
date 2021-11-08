@@ -183,21 +183,16 @@ func init() {
 			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 
-		// for _, v := range regexp.MustCompile(`\[TG:image,file=([^\[\]]+)\]`).FindAllStringSubmatch(jms.Msg, -1) {
-		// 	paths = append(paths, "data/images/"+v[1])
-		// 	s = strings.Replace(s, fmt.Sprintf(`[TG:image,file=%s]`, v[1]), "", -1)
-		// }
-		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindAllStringSubmatch(jms.Msg, -1)
-		atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindAllStringSubmatch(jms.Msg, -1)
-		// wxids = regexp.MustCompile(`(?<=wxid=)(.+?)(?=])`).FindAllStringSubmatch(jms.Msg, -1)
 		msgBk := fmt.Sprintf("%s", jms.Msg)
+		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindAllStringSubmatch(msgBk, -1)
+		atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindAllStringSubmatch(msgBk, -1)
+		// wxids = regexp.MustCompile(`(?<=wxid=)(.+?)(?=])`).FindAllStringSubmatch(jms.Msg, -1)
+		
 		if len(atOld) > 0 {
 			for i := 0; i < len(atOld); i++ {
 			  msgBk = strings.Replace(msgBk, atOld[i], mt.Sprintf(`@%s`, atNew[i]), -1)
 			}
 		}
-
-		s = strings.Replace(s, fmt.Sprintf(`[TG:image,file=%s]`, v[1]), "", -1)
 
 		pusherMsg := PusherMsg{
 			AppID: "com.tencent.xin",
