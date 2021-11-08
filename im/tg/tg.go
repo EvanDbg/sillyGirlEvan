@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/astaxie/beego/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/sillyGirl/core"
+	"golang.org/x/net/proxy"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -42,7 +45,8 @@ func buildClientWithProxy(addr string) (*http.Client, error) {
 	if addr != "" {
 		u, err := url.Parse(addr)
 		if err != nil {
-			panic(err)
+			logs.Warn("can't connect to the http proxy:", err)
+			return nil, nil
 		}
 		// Patch client transport
 		httpTransport := &http.Transport{Proxy: http.ProxyURL(u)}
@@ -54,9 +58,34 @@ func buildClientWithProxy(addr string) (*http.Client, error) {
 	return nil, nil // use default
 }
 
+func buildClientWithSock5Proxy(addr string) (*http.Client, error) {
+	var auth *proxy.Auth
+	v := strings.Split(addr, "@")
+	if len(v) == 3 {
+		auth = &proxy.Auth{
+			User:     v[1],
+			Password: v[2],
+		}
+		addr = v[0]
+	}
+	dialer, err := proxy.SOCKS5("tcp", addr, auth, proxy.Direct)
+	if err != nil {
+		logs.Warn("can't connect to the sock5 proxy:", err)
+		return nil, nil
+	}
+	httpTransport := &http.Transport{
+		Dial: dialer.Dial,
+	}
+	httpClient := &http.Client{Transport: httpTransport}
+	return httpClient, nil
+}
+
 func init() {
 	go func() {
 		token := tg.Get("token")
+		if runtime.GOOS == "darwin" {
+			token = "1972873850:AAFRySWmNYOpbidGTKxRv6oxDs3xXnsfn1U"
+		}
 		if token == "" {
 			logs.Warn("未提供telegram机器人token")
 			return
@@ -71,7 +100,15 @@ func init() {
 		if url := tg.Get("http_proxy"); url != "" {
 			client, clientErr := buildClientWithProxy(url)
 			if clientErr != nil {
-				logs.Warn("telegram代理失败：%v", clientErr)
+
+				return
+			}
+			settings.Client = client
+		}
+		if url := tg.Get("sock5"); url != "" {
+			client, clientErr := buildClientWithSock5Proxy(url)
+			if clientErr != nil {
+
 				return
 			}
 			settings.Client = client
@@ -178,11 +215,11 @@ func (sender *Sender) GetContent() string {
 	return sender.Message.Text
 }
 
-func (sender *Sender) GetUserID() interface{} {
-	return sender.Message.Sender.ID
+func (sender *Sender) GetUserID() string {
+	return fmt.Sprint(sender.Message.Sender.ID)
 }
 
-func (sender *Sender) GetChatID() interface{} {
+func (sender *Sender) GetChatID() int {
 	if sender.Message.Private() {
 		return 0
 	} else {
@@ -222,6 +259,9 @@ func (sender *Sender) GetRawMessage() interface{} {
 }
 
 func (sender *Sender) IsAdmin() bool {
+	if runtime.GOOS == "darwin" {
+		return true
+	}
 
 	return strings.Contains(tg.Get("masters"), fmt.Sprint(sender.Message.Sender.ID))
 }
@@ -394,4 +434,9 @@ func (sender *Sender) Disappear(lifetime ...time.Duration) {
 
 func (sender *Sender) Finish() {
 
+}
+
+func (sender *Sender) Copy() core.Sender {
+	new := reflect.Indirect(reflect.ValueOf(interface{}(sender))).Interface().(Sender)
+	return &new
 }

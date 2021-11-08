@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/axgle/mahonia"
 	"github.com/beego/beego/v2/adapter/httplib"
@@ -148,8 +150,12 @@ func init() {
 			c.JSON(200, map[string]string{"code": "1023"})
 			return
 		}
-		if jms.Type != 1 && jms.Type != 3 {
-			c.JSON(200, map[string]string{"code": "1023"})
+		// fmt.Println(jms.Type, "++++++++++++++++++++++------")
+		if jms.Type == 0 { //|| jms.Type == 49
+			// if jms.Type != 1 && jms.Type != 3 && jms.Type != 5 {
+			return
+		}
+		if strings.Contains(fmt.Sprint(jms.Msg), `<type>57</type>`) {
 			return
 		}
 		if jms.FinalFromWxid == jms.RobotWxid {
@@ -164,6 +170,10 @@ func init() {
 		if robot_wxid != jms.RobotWxid {
 			robot_wxid = jms.RobotWxid
 			wx.Set("robot_wxid", robot_wxid)
+		}
+		if wx.GetBool("keaimao_dynamic_ip", false) {
+			ip, _ := c.RemoteIP()
+			wx.Set("api_url", fmt.Sprintf("http://%s:%s", ip.String(), wx.Get("keaimao_port", "8080"))) //
 		}
 		//core.Senders <- &Sender{
 		//	value: jms,
@@ -206,6 +216,8 @@ func init() {
 	})
 }
 
+var wxbase sync.Map
+
 var myip = ""
 var relaier = wx.Get("relaier")
 
@@ -216,7 +228,7 @@ func relay(url string) string {
 	if relaier != "" {
 		return fmt.Sprintf(relaier, url)
 	} else {
-		if myip == "" || wx.GetBool("dynamic_ip", false) == true {
+		if myip == "" || wx.GetBool("sillyGirl_dynamic_ip", false) == true {
 			ip, _ := httplib.Get("https://imdraw.com/ip").String()
 			if ip != "" {
 				myip = ip
@@ -259,11 +271,15 @@ func (sender *Sender) GetContent() string {
 	}
 	return fmt.Sprint(sender.value.Msg)
 }
-func (sender *Sender) GetUserID() interface{} {
+func (sender *Sender) GetUserID() string {
 	return sender.value.FinalFromWxid
 }
-func (sender *Sender) GetChatID() interface{} {
-	return strings.Replace(sender.value.FromWxid, "@chatroom", "", -1)
+func (sender *Sender) GetChatID() int {
+	if strings.Contains(sender.value.FromWxid, "@chatroom") {
+		return core.Int(strings.Replace(sender.value.FromWxid, "@chatroom", "", -1))
+	} else {
+		return 0
+	}
 }
 func (sender *Sender) GetImType() string {
 	return "wx"
@@ -296,12 +312,14 @@ func (sender *Sender) Reply(msgs ...interface{}) (int, error) {
 		switch item.(type) {
 		case string:
 			pmsg.Msg = item.(string)
-			// images := []string{}
-			// for _, v := range regexp.MustCompile(`\[CQ:image,file=base64://([^\[\]]+)\]`).FindAllStringSubmatch(pmsg.Msg, -1) {
-			// 	images = append(images, v[1])
-			// 	message = strings.Replace(message, fmt.Sprintf(`[CQ:image,file=base64://%s]`, v[1]), "", -1)
+			images := []string{}
+			for _, v := range regexp.MustCompile(`\[CQ:image,file=base64://([^\[\]]+)\]`).FindAllStringSubmatch(pmsg.Msg, -1) {
+				images = append(images, v[1])
+				pmsg.Msg = strings.Replace(pmsg.Msg, fmt.Sprintf(`[CQ:image,file=base64://%s]`, v[1]), "", -1)
+			}
+			// for _, image := range images {
+			// 	wxbase
 			// }
-			// if
 		case []byte:
 			pmsg.Msg = string(item.([]byte))
 		case core.ImageUrl:
@@ -337,4 +355,9 @@ func md5V(str string) string {
 	h := md5.New()
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (sender *Sender) Copy() core.Sender {
+	new := reflect.Indirect(reflect.ValueOf(interface{}(sender))).Interface().(Sender)
+	return &new
 }

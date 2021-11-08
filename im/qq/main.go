@@ -13,6 +13,7 @@ import (
 	"github.com/Mrs4s/go-cqhttp/coolq"
 	"github.com/Mrs4s/go-cqhttp/global"
 	"github.com/Mrs4s/go-cqhttp/global/config"
+	"github.com/Mrs4s/go-cqhttp/server"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/sillyGirl/core"
 	"gopkg.in/yaml.v3"
@@ -39,36 +40,54 @@ var (
 )
 
 var bot *coolq.CQBot
-var qq = core.NewBucket("qq")
+
+var qq core.Bucket
 
 func init() {
+	type Empty struct{}
+	qq = core.RegistIm(Empty{})
 	go start()
+	if qq.GetBool("disable", false) == true {
+		return
+	}
 }
 
 func start() {
-	conf = &config.Config{}
-	conf.Account.Uin = int64(qq.GetInt("uin", 0))
-	conf.Account.Password = qq.Get("password")
-	conf.Message.ReportSelfMessage = true
-	conf.Account.ReLogin.MaxTimes = 30
-	// conf.Output.Debug = true
-	conf.Database = map[string]yaml.Node{
-		"leveldb": {
-			Kind: 4,
-			Tag:  "!!map",
-			Content: []*yaml.Node{
-				{
-					Kind:  8,
-					Tag:   "!!str",
-					Value: "enable",
-				},
-				{
-					Kind:  8,
-					Tag:   "!!bool",
-					Value: "true",
+	if qq.Get("session.token") == "{}" {
+		qq.Set("session.token", "")
+	}
+	if strings.HasPrefix(qq.Get("device.json"), "{") {
+		qq.Set("device.json", "")
+	}
+
+	if custom_config := qq.Get("custom_config"); custom_config != "" {
+		config.DefaultConfigFile = custom_config
+		conf = config.Get()
+	} else {
+		conf = &config.Config{}
+		conf.Account.Uin = int64(qq.GetInt("uin", 0))
+		conf.Account.Password = qq.Get("password")
+		conf.Message.ReportSelfMessage = true
+		conf.Account.ReLogin.MaxTimes = 30
+		// conf.Output.Debug = true
+		conf.Database = map[string]yaml.Node{
+			"leveldb": {
+				Kind: 4,
+				Tag:  "!!map",
+				Content: []*yaml.Node{
+					{
+						Kind:  8,
+						Tag:   "!!str",
+						Value: "enable",
+					},
+					{
+						Kind:  8,
+						Tag:   "!!bool",
+						Value: "true",
+					},
 				},
 			},
-		},
+		}
 	}
 	if conf.Output.Debug {
 		log.SetReportCaller(true)
@@ -113,7 +132,9 @@ func start() {
 		qq.Set("device.json", string(client.SystemDeviceInfo.ToJson()))
 	} else {
 		if err := client.SystemDeviceInfo.ReadJson([]byte(device)); err != nil {
-			log.Fatalf("加载设备信息失败: %v", err)
+			log.Warnf("加载设备信息失败: %v", err)
+			// log.Fatalf("加载设备信息失败: %v", err)
+			return
 		}
 	}
 	PasswordHash = md5.Sum([]byte(conf.Account.Password))
@@ -169,11 +190,15 @@ func start() {
 	if !isTokenLogin {
 		if !isQRCodeLogin {
 			if err := commonLogin(); err != nil {
-				log.Fatalf("登录时发生致命错误: %v", err)
+				// log.Fatalf("登录时发生致命错误: %v", err)
+				log.Warnf("登录时发生致命错误: %v", err)
+				return
 			}
 		} else {
 			if err := qrcodeLogin(); err != nil {
-				log.Fatalf("登录时发生致命错误: %v", err)
+				// log.Fatalf("登录时发生致命错误: %v", err)
+				log.Warnf("登录时发生致命错误: %v", err)
+				return
 			}
 		}
 	}
@@ -190,10 +215,13 @@ func start() {
 		time.Sleep(time.Second * time.Duration(conf.Account.ReLogin.Delay))
 		for {
 			if conf.Account.ReLogin.Disabled {
-				os.Exit(1)
+				// os.Exit(1)
+				return
 			}
 			if times > conf.Account.ReLogin.MaxTimes && conf.Account.ReLogin.MaxTimes != 0 {
-				log.Fatalf("Bot重连次数超过限制, 停止")
+				log.Warnf("Bot重连次数超过限制, 停止")
+				// log.Fatalf("Bot重连次数超过限制, 停止")
+				return
 			}
 			times++
 			if conf.Account.ReLogin.Interval > 0 {
@@ -210,7 +238,9 @@ func start() {
 			}
 			log.Warnf("快速重连失败: %v", err)
 			if isQRCodeLogin {
-				log.Fatalf("快速重连失败, 扫码登录无法恢复会话.")
+				// log.Fatalf("快速重连失败, 扫码登录无法恢复会话.")
+				log.Warnf("快速重连失败, 扫码登录无法恢复会话.")
+				return
 			}
 			log.Warnf("快速重连失败, 尝试普通登录. 这可能是因为其他端强行T下线导致的.")
 			time.Sleep(time.Second)
@@ -294,5 +324,69 @@ func start() {
 		}
 		//
 		bot.SendGroupMessage(core.Int64(i), &message.SendingMessage{Elements: append(bot.ConvertStringMessage(s, true), imgs...)}) //&message.AtElement{Target: int64(j)}
+	}
+
+	coolq.IgnoreInvalidCQCode = conf.Message.IgnoreInvalidCQCode
+	coolq.SplitURL = conf.Message.FixURL
+	coolq.ForceFragmented = conf.Message.ForceFragment
+	coolq.RemoveReplyAt = conf.Message.RemoveReplyAt
+	coolq.ExtraReplyData = conf.Message.ExtraReplyData
+	coolq.SkipMimeScan = conf.Message.SkipMimeScan
+	if http_server := qq.Get("http_server"); http_server != "" {
+		port := 80
+		host := "127.0.0.1"
+		res := strings.Split("http_server", ":")
+		if len(res) == 1 {
+			host = res[0]
+		}
+		if len(res) == 2 {
+			port = core.Int(res[1])
+		}
+		go server.RunHTTPServerAndClients(bot, &config.HTTPServer{
+			Host: host,
+			Port: port,
+		})
+	}
+	for _, m := range conf.Servers {
+		if h, ok := m["http"]; ok {
+			hc := new(config.HTTPServer)
+			if err := h.Decode(hc); err != nil {
+				log.Warn("读取http配置失败 :", err)
+			} else {
+				go server.RunHTTPServerAndClients(bot, hc)
+			}
+		}
+		if s, ok := m["ws"]; ok {
+			sc := new(config.WebsocketServer)
+			if err := s.Decode(sc); err != nil {
+				log.Warn("读取正向Websocket配置失败 :", err)
+			} else {
+				go server.RunWebSocketServer(bot, sc)
+			}
+		}
+		if c, ok := m["ws-reverse"]; ok {
+			rc := new(config.WebsocketReverse)
+			if err := c.Decode(rc); err != nil {
+				log.Warn("读取反向Websocket配置失败 :", err)
+			} else {
+				go server.RunWebSocketClient(bot, rc)
+			}
+		}
+		if p, ok := m["pprof"]; ok {
+			pc := new(config.PprofServer)
+			if err := p.Decode(pc); err != nil {
+				log.Warn("读取pprof配置失败 :", err)
+			} else {
+				go server.RunPprofServer(pc)
+			}
+		}
+		if p, ok := m["lambda"]; ok {
+			lc := new(config.LambdaServer)
+			if err := p.Decode(lc); err != nil {
+				log.Warn("读取pprof配置失败 :", err)
+			} else {
+				go server.RunLambdaClient(bot, lc)
+			}
+		}
 	}
 }

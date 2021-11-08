@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -16,9 +15,6 @@ import (
 var c *cron.Cron
 
 func init() {
-	if runtime.GOOS != "windows" {
-		pname = regexp.MustCompile(`/([^/\s]+)$`).FindStringSubmatch(os.Args[0])[1]
-	}
 	c = cron.New()
 	c.Start()
 }
@@ -31,7 +27,7 @@ type Function struct {
 	Cron    string
 }
 
-var pname = ""
+var pname = regexp.MustCompile(`/([^/\s]+)$`).FindStringSubmatch(os.Args[0])[1]
 
 var name = func() string {
 	return sillyGirl.Get("name", "傻妞")
@@ -66,7 +62,7 @@ func AddCommand(prefix string, cmds []Function) {
 			}
 			cmds[j].Rules[i] = strings.Replace(cmds[j].Rules[i], "(", `[(]`, -1)
 			cmds[j].Rules[i] = strings.Replace(cmds[j].Rules[i], ")", `[)]`, -1)
-			cmds[j].Rules[i] = regexp.MustCompile(`\?$`).ReplaceAllString(cmds[j].Rules[i], `(.+)`)
+			cmds[j].Rules[i] = regexp.MustCompile(`\?$`).ReplaceAllString(cmds[j].Rules[i], `([\s\S]+)`)
 			cmds[j].Rules[i] = strings.Replace(cmds[j].Rules[i], " ", `\s+`, -1)
 			cmds[j].Rules[i] = strings.Replace(cmds[j].Rules[i], "?", `(\S+)`, -1)
 			cmds[j].Rules[i] = "^" + cmds[j].Rules[i] + "$"
@@ -87,26 +83,6 @@ func AddCommand(prefix string, cmds []Function) {
 
 func handleMessage(sender Sender) {
 	defer sender.Finish()
-	recall := sillyGirl.Get("recall")
-	if recall != "" {
-		recalled := false
-		for _, v := range strings.Split(recall, "&") {
-			reg, err := regexp.Compile(v)
-			if err == nil {
-				if reg.FindString(sender.GetContent()) != "" {
-					if !sender.IsAdmin() && sender.GetImType() != "wx" {
-						sender.Delete()
-						sender.Reply("本妞清除了不好的消息～", time.Duration(time.Second))
-						recalled = true
-						break
-					}
-				}
-			}
-		}
-		if recalled == true {
-			return
-		}
-	}
 
 	defer func() {
 		logs.Info("%v ==> %v", sender.GetContent(), "finished")
@@ -144,6 +120,7 @@ func handleMessage(sender Sender) {
 	if mtd && !con {
 		return
 	}
+	// logs.Info("%v ==> %v", sender.GetContent(), "passed")
 	// if v, ok := waits.Load(key); ok {
 	// 	c := v.(*Carry)
 	// 	if m := regexp.MustCompile(c.Pattern).FindString(sender.GetContent()); m != "" {
@@ -205,6 +182,26 @@ func handleMessage(sender Sender) {
 		return nil
 	})
 
+	recall := sillyGirl.Get("recall")
+	if recall != "" {
+		recalled := false
+		for _, v := range strings.Split(recall, "&") {
+			reg, err := regexp.Compile(v)
+			if err == nil {
+				if reg.FindString(sender.GetContent()) != "" {
+					if !sender.IsAdmin() && sender.GetImType() != "wx" {
+						sender.Delete()
+						sender.Reply("本妞清除了不好的消息～", time.Duration(time.Second))
+						recalled = true
+						break
+					}
+				}
+			}
+		}
+		if recalled == true {
+			return
+		}
+	}
 }
 
 func FetchCookieValue(ps ...string) string {

@@ -3,13 +3,15 @@ package core
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
 )
 
 type Sender interface {
-	GetUserID() interface{}
-	GetChatID() interface{}
+	GetUserID() string
+	GetChatID() int
 	GetImType() string
 	GetMessageID() int
 	GetUsername() string
@@ -31,7 +33,8 @@ type Sender interface {
 	Finish()
 	Continue()
 	IsContinue() bool
-	Await(Sender, func(Sender) interface{}, ...interface{})
+	Await(Sender, func(Sender) interface{}, ...interface{}) interface{}
+	Copy() Sender
 }
 
 type Edit int
@@ -49,8 +52,8 @@ type ImagePath string
 type Faker struct {
 	Message string
 	Type    string
-	UserID  interface{}
-	ChatID  interface{}
+	UserID  string
+	ChatID  int
 	BaseSender
 }
 
@@ -58,11 +61,11 @@ func (sender *Faker) GetContent() string {
 	return sender.Message
 }
 
-func (sender *Faker) GetUserID() interface{} {
+func (sender *Faker) GetUserID() string {
 	return sender.UserID
 }
 
-func (sender *Faker) GetChatID() interface{} {
+func (sender *Faker) GetChatID() int {
 	return sender.ChatID
 }
 
@@ -131,6 +134,11 @@ func (sender *Faker) Disappear(lifetime ...time.Duration) {
 
 func (sender *Faker) Finish() {
 
+}
+
+func (sender *Faker) Copy() Sender {
+	new := reflect.Indirect(reflect.ValueOf(interface{}(sender))).Interface().(Faker)
+	return &new
 }
 
 type BaseSender struct {
@@ -209,11 +217,11 @@ func (sender *BaseSender) GetMessageID() int {
 	return 0
 }
 
-func (sender *BaseSender) GetUserID() interface{} {
-	return nil
+func (sender *BaseSender) GetUserID() string {
+	return ""
 }
-func (sender *BaseSender) GetChatID() interface{} {
-	return nil
+func (sender *BaseSender) GetChatID() int {
+	return 0
 }
 func (sender *BaseSender) GetImType() string {
 	return ""
@@ -233,11 +241,25 @@ type Carry struct {
 
 type forGroup string
 
+type again string
+
+var Again again = ""
+
+var GoAgain = func(str string) again {
+	return again(str)
+}
+
+type YesOrNo string
+
+var YesNo YesOrNo = "yeson"
+var Yes YesOrNo = "yes"
+var No YesOrNo = "no"
+
 var ForGroup forGroup
 
-func (_ *BaseSender) Await(sender Sender, callback func(Sender) interface{}, params ...interface{}) {
+func (_ *BaseSender) Await(sender Sender, callback func(Sender) interface{}, params ...interface{}) interface{} {
 	c := &Carry{}
-	timeout := time.Second * 20
+	timeout := time.Second * 86400000
 	var handleErr func(error)
 	var fg *forGroup
 	for _, param := range params {
@@ -251,7 +273,6 @@ func (_ *BaseSender) Await(sender Sender, callback func(Sender) interface{}, par
 			}
 		case func() string:
 			callback = param.(func(Sender) interface{})
-
 		case func(error):
 			handleErr = param.(func(error))
 		case forGroup:
@@ -260,13 +281,14 @@ func (_ *BaseSender) Await(sender Sender, callback func(Sender) interface{}, par
 		}
 	}
 	if callback == nil {
-		return
+		return nil
 	}
 	if c.Pattern == "" {
 		c.Pattern = `[\s\S]*`
 	}
 	c.Chan = make(chan interface{}, 1)
 	c.Result = make(chan interface{}, 1)
+
 	key := fmt.Sprintf("u=%v&c=%v&i=%v", sender.GetUserID(), sender.GetChatID(), sender.GetImType())
 	if fg != nil {
 		key += fmt.Sprintf("&t=%v&f=true", time.Now().Unix())
@@ -274,25 +296,48 @@ func (_ *BaseSender) Await(sender Sender, callback func(Sender) interface{}, par
 	if oc, ok := waits.LoadOrStore(key, c); ok {
 		oc.(*Carry).Chan <- InterruptError
 	}
-	select {
-	case result := <-c.Chan:
-		switch result.(type) {
-		case Sender:
-			waits.Delete(key)
-			c.Result <- callback(result.(Sender)) //, nil
-			return
-		case error:
-			waits.Delete(key)
-			if handleErr != nil {
-				handleErr(result.(error))
-			}
-			c.Result <- nil //
-		}
-	case <-time.After(timeout):
+	defer func() {
 		waits.Delete(key)
-		if handleErr != nil {
-			handleErr(TimeOutError)
+	}()
+	for {
+		select {
+		case result := <-c.Chan:
+			switch result.(type) {
+			case Sender:
+				s := result.(Sender)
+				result := callback(s)
+				if v, ok := result.(again); ok {
+					if v == "" {
+						c.Result <- nil
+					} else {
+						c.Result <- string(v)
+					}
+				} else if _, ok := result.(YesOrNo); ok {
+					if "y" == strings.ToLower(s.GetContent()) {
+						return Yes
+					}
+
+					if "n" == strings.ToLower(s.GetContent()) {
+						return No
+					}
+					c.Result <- "Y or n ?"
+				} else {
+					c.Result <- result
+					return nil
+				}
+			case error:
+				if handleErr != nil {
+					handleErr(result.(error))
+				}
+				c.Result <- nil
+				return nil
+			}
+		case <-time.After(timeout):
+			if handleErr != nil {
+				handleErr(TimeOutError)
+			}
+			c.Result <- nil
+			return nil
 		}
-		c.Result <- nil
 	}
 }

@@ -15,7 +15,7 @@ import (
 
 var BeforeStop = []func(){}
 
-var pidf = "/var/run/" + pname + ".pid"
+var pidf = "/var/run/sillyGirl.pid"
 
 func Daemon() {
 	for _, bs := range BeforeStop {
@@ -36,7 +36,10 @@ func Daemon() {
 		panic(err)
 	}
 	logs.Info(sillyGirl.Get("name", "傻妞") + "以静默形式运行")
-	os.WriteFile(pidf, []byte(fmt.Sprintf("%d", proc.Process.Pid)), 0o644)
+	err = os.WriteFile(pidf, []byte(fmt.Sprintf("%d", proc.Process.Pid)), 0o644)
+	if err != nil {
+		logs.Warn(err)
+	}
 	os.Exit(0)
 }
 
@@ -66,6 +69,21 @@ func CompileCode() error {
 		return errors.New("编译失败：" + err.Error() + "。")
 	}
 	sillyGirl.Set("compiled_at", time.Now().Format("2006-01-02 15:04:05"))
+	return nil
+}
+
+func Download() error {
+	url := "https://github.com/cdle/sillyGirl/releases/download/main/sillyGirl_linux_"
+	if sillyGirl.GetBool("downlod_use_ghproxy", false) { //
+		url = "https://mirror.ghproxy.com/" + url
+	}
+	url += runtime.GOARCH
+	cmd := exec.Command("sh", "-c", "cd "+ExecPath+" && wget "+url+" -O temp && mv temp "+pname+"  && chmod 777 "+pname)
+	_, err := cmd.Output()
+	if err != nil {
+		return errors.New("失败：" + err.Error() + "。")
+	}
+	// sillyGirl.Set("compiled_at", time.Now().Format("2006-01-02 15:04:05"))
 	return nil
 }
 

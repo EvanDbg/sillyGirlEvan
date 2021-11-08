@@ -21,7 +21,7 @@ func init() {
 		if v != "" {
 			vv := strings.Split(v, " ")
 			tp, cd, ud := vv[0], Int(vv[1]), Int(vv[2])
-			if tp == "fake" { //&& sillyGirl.GetBool("update_notify", false) == true { //
+			if tp == "fake" { //&& sillyGirl.GetBool("update_notify", false) == true {
 				// time.Sleep(time.Second * 10)
 				// NotifyMasters("自动更新完成。")
 				return
@@ -47,6 +47,14 @@ func init() {
 
 func initSys() {
 	AddCommand("", []Function{
+		// {//
+		// 	Rules: []string{"unintsall sillyGirl"},
+		// 	Admin: true,
+		// 	Handle: func(s Sender) interface{} {
+		// 		return ""
+		// 	},
+		// },
+		//
 		{
 			Rules: []string{"raw ^name$"},
 			Handle: func(s Sender) interface{} {
@@ -65,6 +73,43 @@ func initSys() {
 				if s.GetImType() == "fake" && !sillyGirl.GetBool("auto_update", true) {
 					return nil
 				}
+				if s.GetImType() != "fake" {
+					if compiled_at != "" {
+						// prefix := "https://ghproxy.com/"
+						//
+						// prefix := sillyGirl.Get("download_prefix")
+
+						for _, prefix := range []string{"https://ghproxy.com/", ""} {
+							data, _ := httplib.Get(prefix + "https://raw.githubusercontent.com/cdle/binary/master/compile_time.go").String()
+							if str := regexp.MustCompile(`\d+`).FindString(data); str != "" && strings.Contains(data, "package") {
+								if str > compiled_at {
+									s.Reply("正在下载更新...")
+									data, err := httplib.Get(prefix + "https://raw.githubusercontent.com/cdle/binary/master/sillyGirl_linux_amd64_" + str).Bytes()
+									if err != nil {
+										return "下载程序错误：" + err.Error()
+									}
+									if len(data) < 2646147 {
+										return "下载失败。"
+									}
+									filename := ExecPath + "/" + pname
+									if err = os.RemoveAll(filename); err != nil {
+										return "删除旧程序错误：" + err.Error()
+									}
+									if err = os.WriteFile(filename, data, 777); err != nil {
+										return "写入程序错误：" + err.Error()
+									}
+									return "下载完成，请对我说\"重启\"。"
+								} else {
+									return fmt.Sprintf("当前版本(%s)最新，无需升级。", compiled_at)
+								}
+							} else {
+								continue
+							}
+						}
+						return "无法升级."
+					}
+				}
+
 				s.Reply("开始检查核心更新...", E)
 				update := false
 				record := func(b bool) {
@@ -85,6 +130,12 @@ func initSys() {
 				files, _ := ioutil.ReadDir(ExecPath + "/develop")
 				for _, f := range files {
 					if f.IsDir() && f.Name() != "replies" {
+						if f.Name() == "qinglong" {
+							continue
+						}
+						if strings.HasPrefix(f.Name(), "_") {
+							continue
+						}
 						s.Reply("检查扩展"+f.Name()+"更新...", E)
 						need, err := GitPull("/develop/" + f.Name())
 						if err != nil {
@@ -120,6 +171,9 @@ func initSys() {
 			Rules: []string{"raw ^编译$"},
 			Admin: true,
 			Handle: func(s Sender) interface{} {
+				if sillyGirl.Get("compiled_at") == "" {
+					return "编译个🐔8。"
+				}
 				s.Reply("正在编译程序...", E)
 				if err := CompileCode(); err != nil {
 					return err
@@ -145,27 +199,49 @@ func initSys() {
 			Handle: func(s Sender) interface{} {
 				s.Disappear()
 				ss := []string{}
+				ruless := [][]string{}
 				for _, f := range functions {
-					// f := f
-					// for i := range f.Rules {
-					// 	f.Rules[i] = strings.Trim(f.Rules[i], "^$")
-					// 	f.Rules[i] = strings.Replace(f.Rules[i], `\s+`, " ", -1)
-					// 	f.Rules[i] = strings.Replace(f.Rules[i], `(\S+)`, "?", -1)
-					// 	f.Rules[i] = strings.Replace(f.Rules[i], `[(]`, "(", -1)
-					// 	f.Rules[i] = strings.Replace(f.Rules[i], `[)]`, ")", -1)
-					// }
-					ss = append(ss, strings.Join(f.Rules, " "))
+					if len(f.Rules) > 0 {
+						rules := []string{}
+						for i := range f.Rules {
+							rules = append(rules, f.Rules[i])
+						}
+						ruless = append(ruless, rules)
+					}
 				}
+				for j := range ruless {
+					for i := range ruless[j] {
+						ruless[j][i] = strings.Trim(ruless[j][i], "^$")
+						ruless[j][i] = strings.Replace(ruless[j][i], `(\S+)`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `(\S*)`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `(.+)`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `(.*)`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `\s+`, " ", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `\s*`, " ", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `.+`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `.*`, "?", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `[(]`, "(", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `[)]`, ")", -1)
+						ruless[j][i] = strings.Replace(ruless[j][i], `([\s\S]+)`, "?", -1)
+					}
+					ss = append(ss, strings.Join(ruless[j], "\n"))
+				}
+
 				return strings.Join(ss, "\n")
 			},
 		},
 		{
 			Admin: true,
-			Rules: []string{"set ? ? ?", "delete ? ?"},
+			Rules: []string{"set ? ? ?", "delete ? ?", "? set ? ?", "? delete ?", "set ? ?", "? set ?"},
 			Handle: func(s Sender) interface{} {
-				b := Bucket(s.Get(0))
+				name := s.Get(0)
+				if name == "silly" {
+					name = "sillyGirl"
+				}
+				b := Bucket(name)
 				if !IsBucket(b) {
-					return errors.New("不存在的存储桶")
+					s.Continue()
+					return nil
 				}
 				old := b.Get(s.Get(1))
 				b.Set(s.Get(1), s.Get(2))
@@ -180,18 +256,55 @@ func initSys() {
 		},
 		{
 			Admin: true,
-			Rules: []string{"get ? ?"},
+			Rules: []string{"get ? ?", "? get ?"},
 			Handle: func(s Sender) interface{} {
-				s.Disappear()
-				b := Bucket(s.Get(0))
-				if !IsBucket(b) {
-					return errors.New("不存在的存储桶")
+
+				name := s.Get(0)
+				if name == "silly" {
+					name = "sillyGirl"
 				}
+				b := Bucket(name)
+				if !IsBucket(b) {
+					s.Continue()
+					return nil
+				}
+				s.Disappear()
 				v := b.Get(s.Get(1))
 				if v == "" {
 					return errors.New("无值")
 				}
 				return v
+			},
+		},
+		{
+			Admin: true,
+			Rules: []string{"list ?"},
+			Handle: func(s Sender) interface{} {
+				name := s.Get(0)
+				if name == "silly" {
+					name = "sillyGirl"
+				}
+				if s.GetChatID() != 0 && name != "reply" {
+					return "请私聊我。"
+				}
+				if name != "otto" && name != "reply" && name != "sillyGirl" && name != "qinglong" {
+					s.Continue()
+					return nil
+				}
+				if s.GetChatID() != 0 {
+					s.Disappear()
+				}
+				b := Bucket(name)
+				if !IsBucket(b) {
+					s.Continue()
+					return nil
+				}
+				rt := ""
+				b.Foreach(func(k, v []byte) error {
+					rt += fmt.Sprintf("%s === %s\n", k, v)
+					return nil
+				})
+				return strings.Trim(rt, "\n")
 			},
 		},
 		{
@@ -211,7 +324,7 @@ func initSys() {
 		{
 			Rules: []string{"raw ^groupCode$"},
 			Handle: func(s Sender) interface{} {
-				return fmt.Sprintf("%d", s.GetChatID())
+				return fmt.Sprint(s.GetChatID())
 			},
 		},
 		{
@@ -235,13 +348,17 @@ func initSys() {
 			},
 		},
 		{
-			Rules: []string{"^守护傻妞"},
+			Rules: []string{"守护傻妞"},
+			Admin: true,
 			Handle: func(s Sender) interface{} {
 				service := `
+[Unit]
+Description=silly silly girl bot
+After=network.target mysql.service mariadb.service mysqld.service
 [Service]
 Type=forking
 ExecStart=` + ExecPath + "/" + pname + ` -d
-PIDFile=/var/run/` + pname + `.pid
+PIDFile=/var/run/sillyGirl.pid
 Restart=always
 User=root
 Group=root
@@ -294,7 +411,6 @@ Alias=sillyGirl.service`
 				s.Reply(data)
 				fword(data)
 				stop := false
-				goon := false
 				win := false
 				if strings.Contains(data, "你赢") {
 					stop = true
@@ -303,42 +419,44 @@ Alias=sillyGirl.service`
 				if strings.Contains(data, "我赢") {
 					stop = true
 				}
-				for {
-					if stop == true {
-						break
-					}
+				if !stop {
 					s.Await(s, func(s2 Sender) interface{} {
 						ct := s2.GetContent()
 						me := s2.GetUserID() == s.GetUserID()
+						if strings.Contains(ct, "小爱提示") || ct == "q" {
+							s2.SetContent(fmt.Sprintf("小爱%s字开头的成语有哪些？", begin))
+							s2.Continue()
+							return Again
+						}
 						if strings.Contains(ct, "认输") {
 							if me {
 								stop = true
 								return nil
 							} else {
-								return "你认输有个屁用。"
+								return GoAgain("你认输有个屁用。")
 							}
 						}
 						if regexp.MustCompile("^"+begin).FindString(ct) == "" || strings.Contains(ct, "接龙") {
 							if me {
-								return fmt.Sprintf("现在是接【%s】开头的成语哦。", begin)
+								return GoAgain(fmt.Sprintf("现在是接【%s】开头的成语哦。", begin))
 							} else {
 								s2.Continue()
-								return nil
+								return Again
 							}
 						}
 						cy := regexp.MustCompile("^[一-龥]+$").FindString(ct)
 						if cy == "" {
 							s2.Disappear(time.Millisecond * 500)
-							return "请认真接龙，一站到底！"
+							return GoAgain("请认真接龙，一站到底！")
 						}
 						data, err := httplib.Get("http://hm.suol.cc/API/cyjl.php?id=" + id + "&msg=我接" + cy).String()
 						if err != nil {
 							s2.Reply(err)
-							return nil
+							return Again
 						}
 						if strings.Contains(data, "file_get_contents") {
 							ss := strings.Split(data, "\n")
-							return ss[len(ss)-1]
+							return GoAgain(ss[len(ss)-1])
 						}
 						if strings.Contains(data, "你赢") {
 							stop = true
@@ -361,23 +479,17 @@ Alias=sillyGirl.service`
 								data += "\n你以为你会，结果出丑了吧。"
 							}
 						}
+						if !stop {
+							return GoAgain(data)
+						}
 						return data
 					}, ForGroup)
 				}
 				time.Sleep(time.Microsecond * 100)
 				s.Reply("还玩吗？[Y/n]")
-				s.Await(s, func(s2 Sender) interface{} {
-					msg := s2.GetContent()
-					if strings.ToLower(msg) == "y" || strings.ToLower(msg) == "yes" {
-						goon = true
-					}
-					return nil
-				}, func(err error) {
-					if err != nil {
-						s.Reply("不玩拉倒，给你脸了。")
-					}
-				})
-				if goon {
+				if s.Await(s, func(s2 Sender) interface{} {
+					return YesNo
+				}, ForGroup) == Yes {
 					goto start
 				}
 				if !win {
@@ -386,6 +498,19 @@ Alias=sillyGirl.service`
 					s.Reply("大爷下次再来玩啊～")
 				}
 				return nil
+			},
+		},
+		{
+			Rules: []string{"^machineId$"},
+			Admin: true,
+			Handle: func(s Sender) interface{} {
+				return OttoFuncs["machineId"]("")
+			},
+		},
+		{
+			Rules: []string{"^time$"},
+			Handle: func(s Sender) interface{} {
+				return OttoFuncs["timeFormat"]("2006-01-02 15:04:05")
 			},
 		},
 	})

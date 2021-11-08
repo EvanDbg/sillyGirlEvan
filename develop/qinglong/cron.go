@@ -195,9 +195,7 @@ func init() {
 				if Config.Host == "" {
 					return nil
 				}
-				if s.GetImType() == "fake" && qinglong.GetBool("autoCronHideDuplicate", true) == false {
-					return nil
-				}
+
 				w := func(s string) int {
 					if strings.Contains(s, "cdle") {
 						return 20
@@ -206,6 +204,9 @@ func init() {
 						return 1
 					}
 					if strings.Contains(s, "smiek2221") {
+						return 9
+					}
+					if strings.Contains(s, "smiek2121") {
 						return 9
 					}
 					if strings.Contains(s, "Aaron-lv") {
@@ -228,6 +229,18 @@ func init() {
 					}
 					if strings.Contains(crons[i].Command, "jd_disable.py") {
 						Config.Req(CRONS, PUT, "/disable", []byte(fmt.Sprintf(`["%s"]`, crons[i].ID)))
+						continue
+					}
+					if strings.Contains(crons[i].Command, "jd_redEnvelope.js") || strings.Contains(strings.ToLower(crons[i].Command), "jd_red.js") || strings.Contains(strings.ToLower(crons[i].Command), "jd_hongbao.js") || strings.Contains(crons[i].Command, "1111") {
+						if !strings.Contains(crons[i].Command, "cdle") {
+							Config.Req(CRONS, PUT, "/disable", []byte(fmt.Sprintf(`["%s"]`, crons[i].ID)))
+						} else {
+							Config.Req(CRONS, PUT, "/enable", []byte(fmt.Sprintf(`["%s"]`, crons[i].ID)))
+						}
+						continue
+					}
+					if s.GetImType() == "fake" && qinglong.GetBool("autoCronHideDuplicate", true) == false {
+						// return nil
 						continue
 					}
 					if task, ok := tasks[crons[i].Name]; ok {

@@ -1,13 +1,11 @@
 package core
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/astaxie/beego/logs"
-	"github.com/beego/beego/v2/adapter/httplib"
 	"gopkg.in/yaml.v2"
 )
 
@@ -19,22 +17,24 @@ var ExecPath, _ = filepath.Abs(filepath.Dir(os.Args[0]))
 
 var Config Yaml
 
-func ReadYaml(confDir string, conf interface{}, url string) {
+func ReadYaml(confDir string, conf interface{}, _ string) {
 	path := confDir + "config.yaml"
 	if _, err := os.Stat(confDir); err != nil {
 		os.MkdirAll(confDir, os.ModePerm)
 	}
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		logs.Warn(err)
+		// logs.Warn(err)
+		return
 	}
 	s, _ := ioutil.ReadAll(f)
 	if len(s) == 0 {
-		logs.Info("下载配置%s", url)
-		r, err := httplib.Get("https://ghproxy.com/" + url).Response()
-		if err == nil {
-			io.Copy(f, r.Body)
-		}
+		// logs.Info("下载配置%s", url)
+		// r, err := httplib.Get("https://ghproxy.com/" + url).Response()//
+		// if err == nil {
+		// 	io.Copy(f, r.Body)
+		// }
+		return
 	}
 	f.Close()
 	content, err := ioutil.ReadFile(path)
