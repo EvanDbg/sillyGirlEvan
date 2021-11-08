@@ -183,16 +183,16 @@ func init() {
 			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 
-		msgBk := fmt.Sprintf("%s", jms.Msg)
-		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindStringSubmatch(msgBk)
-		atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindStringSubmatch(msgBk)
+		// msgBk := fmt.Sprintf("%s", jms.Msg)
+		// atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindStringSubmatch(msgBk)
+		// atNew := regexp.MustCompile(`(?<=nickname=)(.+?)(?=,wxid)`).FindStringSubmatch(msgBk)
 		// wxids = regexp.MustCompile(`(?<=wxid=)(.+?)(?=])`).FindAllStringSubmatch(jms.Msg, -1)
 		
-		if len(atOld) > 0 {
-			for i := 0; i < len(atOld); i++ {
-			  msgBk = strings.Replace(msgBk, atOld[i], fmt.Sprintf(`@%s`, atNew[i]), -1)
-			}
-		}
+		// if len(atOld) > 0 {
+		// 	for i := 0; i < len(atOld); i++ {
+		// 	  msgBk = strings.Replace(msgBk, atOld[i], fmt.Sprintf(`@%s`, atNew[i]), -1)
+		// 	}
+		// }
 
 		pusherMsg := PusherMsg{
 			AppID: "com.tencent.xin",
@@ -200,7 +200,7 @@ func init() {
 			DeviceName: "",
 			Title: pusherTitle,
 			Subtitle: "",
-			Message: fmt.Sprintf("%s", msgBk),
+			Message: fmt.Sprintf("%s", jms.Msg),
 		}
 		apikey := wx.Get("apikey")
 		dbCode := wx.Get("dbCode")
