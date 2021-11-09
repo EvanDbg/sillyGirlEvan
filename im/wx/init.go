@@ -228,6 +228,7 @@ func init() {
 		//}
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
+			hasGrpNick = false
 			pmsg := TextMsg{
 				Event:     "GetGroupMemberList",
 				GroupWxid: jms.FromWxid,
@@ -238,11 +239,31 @@ func init() {
 			mems := grpMems.Data
 			for _, mem := range mems {
 				if mem.Wxid == jms.FinalFromWxid {
-					pusherTitle = mem.Group_nickname
+					if (mem.Group_nickname != "") {
+						pusherTitle = mem.Group_nickname
+						hasGrpNick = true
+					}
 					break
 				}
 			}
-			// pusherTitle = string(rs) //fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
+			if !hasGrpNick {
+				pmsg = TextMsg{
+					Event:     "GetFriendList",
+				}
+				rs = sendMsg(&pmsg)
+				friends := FriendList{}
+				json.Unmarshal(rs, &friends)
+				frds := friends.Data
+				for _, friend := range frds {
+					if friend.Wxid == jms.FinalFromWxid {
+						if (friend.Remark != "") {
+							pusherTitle = friend.Remark
+						}
+						break
+					}
+				}
+			}
+			pusherTitle = fmt.Sprintf("%s@%s", pusherTitle, jms.FromName)
 		}
 
 		msgBk := fmt.Sprintf("%s", jms.Msg)
