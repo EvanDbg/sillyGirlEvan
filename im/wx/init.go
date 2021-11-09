@@ -58,7 +58,7 @@ func sendMsg(pmsg *TextMsg) []byte {
 	return x
 }
 
-func getNickname(nickname, wxid, grpWxid) string {
+func getNickname(nickname string, wxid string, grpWxid string) string {
 	finalNickname := nickname
 	hasGrpNick := false
 	pmsg := TextMsg{
