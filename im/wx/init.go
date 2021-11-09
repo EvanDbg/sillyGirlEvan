@@ -233,7 +233,16 @@ func init() {
 				GroupWxid: jms.FromWxid,
 			}
 			rs := sendMsg(&pmsg)
-			pusherTitle = string(rs) //fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
+			grpMems := JsonMsg{}
+			json.Unmarshal(rs, &grpMems)
+			mems = grpMems.GroupMember
+			for _, mem := range mems {
+				if mem.Wxid == jms.FinalFromWxid {
+					pusherTitle = mem.Group_nickname
+					break
+				}
+			}
+			// pusherTitle = string(rs) //fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 
 		msgBk := fmt.Sprintf("%s", jms.Msg)
