@@ -233,9 +233,9 @@ func init() {
 				GroupWxid: jms.FromWxid,
 			}
 			rs := sendMsg(&pmsg)
-			grpMems := JsonMsg{}
+			grpMems := GroupMemberList{}
 			json.Unmarshal(rs, &grpMems)
-			mems = grpMems.GroupMember
+			mems := grpMems.Data
 			for _, mem := range mems {
 				if mem.Wxid == jms.FinalFromWxid {
 					pusherTitle = mem.Group_nickname
