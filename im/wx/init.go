@@ -228,7 +228,7 @@ func init() {
 		//}
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
-			hasGrpNick = false
+			hasGrpNick := false
 			pmsg := TextMsg{
 				Event:     "GetGroupMemberList",
 				GroupWxid: jms.FromWxid,
