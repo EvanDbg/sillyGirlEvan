@@ -228,7 +228,12 @@ func init() {
 		//}
 		pusherTitle := jms.FinalFromName
 		if jms.FinalFromName != jms.FromName {
-			pusherTitle = fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
+			pmsg := TextMsg{
+				Event:     "GetGroupMemberList",
+				GroupWxid: fmt.Sprint(i),
+			}
+			rs = sendMsg(&pmsg)
+			pusherTitle = string(rs) //fmt.Sprintf("%s@%s", jms.FinalFromName, jms.FromName)
 		}
 
 		msgBk := fmt.Sprintf("%s", jms.Msg)
