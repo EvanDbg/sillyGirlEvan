@@ -42,7 +42,7 @@ func sendTextMsg(pmsg *TextMsg) {
 	req.Response()
 }
 
-func sendMsg(pmsg *TextMsg) {
+func sendMsg(pmsg *TextMsg) []byte {
 	pmsg.Msg = "xxxx"
 	pmsg.ToWxid = robot_wxid
 	pmsg.RobotWxid = robot_wxid
@@ -54,8 +54,8 @@ func sendMsg(pmsg *TextMsg) {
 	d = regexp.MustCompile(`[\n\s]*\n[\s\n]*`).ReplaceAllString(d, "\n")
 	req.Body(d)
 	rsp, _ := req.Response()
-	d, _ := ioutil.ReadAll(rsp.Body)
-	return d
+	x, _ := ioutil.ReadAll(rsp.Body)
+	return x
 }
 
 func TrimHiddenCharacter(originStr string) string {
