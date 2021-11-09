@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
@@ -39,6 +40,22 @@ func sendTextMsg(pmsg *TextMsg) {
 	d = regexp.MustCompile(`[\n\s]*\n[\s\n]*`).ReplaceAllString(d, "\n")
 	req.Body(d)
 	req.Response()
+}
+
+func sendMsg(pmsg *TextMsg) {
+	pmsg.Msg = "xxxx"
+	pmsg.ToWxid = robot_wxid
+	pmsg.RobotWxid = robot_wxid
+	req := httplib.Post(api_url())
+	req.Header("Content-Type", "application/json")
+	data, _ := json.Marshal(pmsg)
+	enc := mahonia.NewEncoder("gbk")
+	d := enc.ConvertString(string(data))
+	d = regexp.MustCompile(`[\n\s]*\n[\s\n]*`).ReplaceAllString(d, "\n")
+	req.Body(d)
+	rsp, _ := req.Response()
+	d, _ := ioutil.ReadAll(rsp.Body)
+	return d
 }
 
 func TrimHiddenCharacter(originStr string) string {
@@ -96,6 +113,37 @@ type PusherMsg struct {
 	AppID    			string `json:"appID"`
 	DeviceName    string `json:"deviceName"`
 	Message    		string `json:"message"`
+}
+
+type FriendList struct {
+	Event         string   `json:"event"`
+	Code          int      `json:"code"`
+	Msg           string   `json:"msg"`
+	Data          []Friend `json:"data"`
+}
+
+type Friend struct {
+	Nickname    	string `json:"nickname"`
+	Remark    		string `json:"remark"`
+	WxNum    		  string `json:"wxNum"`
+	Wxid    			string `json:"wxid"`
+	Robot_wxid    string `json:"robot_wxid"`
+}
+
+type GroupMemberList struct {
+	Event         string        `json:"event"`
+	Code          int           `json:"code"`
+	Msg           string        `json:"msg"`
+	Data          []GroupMember `json:"data"`
+}
+
+type GroupMember struct {
+	Count          int    `json:"count"`
+	Group_nickname string `json:"group_nickname"`
+	Nickname    	 string `json:"nickname"`
+	WxNum    		   string `json:"wxNum"`
+	Wxid    			 string `json:"wxid"`
+	Identity       int    `json:"identity"`
 }
 
 type Msg struct {
