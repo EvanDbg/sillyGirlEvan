@@ -58,6 +58,46 @@ func sendMsg(pmsg *TextMsg) []byte {
 	return x
 }
 
+func getNickname(nickname, wxid, grpWxid) string {
+	finalNickname := nickname
+	hasGrpNick := false
+	pmsg := TextMsg{
+		Event:     "GetGroupMemberList",
+		GroupWxid: grpWxid,
+	}
+	rs := sendMsg(&pmsg)
+	grpMems := GroupMemberList{}
+	json.Unmarshal(rs, &grpMems)
+	mems := grpMems.Data
+	for _, mem := range mems {
+		if mem.Wxid == wxid {
+			if (mem.Group_nickname != "") {
+				finalNickname = mem.Group_nickname
+				hasGrpNick = true
+			}
+			break
+		}
+	}
+	if !hasGrpNick {
+		pmsg = TextMsg{
+			Event:     "GetFriendList",
+		}
+		rs = sendMsg(&pmsg)
+		friends := FriendList{}
+		json.Unmarshal(rs, &friends)
+		frds := friends.Data
+		for _, friend := range frds {
+			if friend.Wxid == wxid {
+				if (friend.Remark != "") {
+					finalNickname = friend.Remark
+				}
+				break
+			}
+		}
+	}
+	return finalNickname
+}
+
 func TrimHiddenCharacter(originStr string) string {
 	srcRunes := []rune(originStr)
 	dstRunes := make([]rune, 0, len(srcRunes))
@@ -226,54 +266,21 @@ func init() {
 		//core.Senders <- &Sender{
 		//	value: jms,
 		//}
-		pusherTitle := jms.FinalFromName
-		if jms.FinalFromName != jms.FromName {
-			hasGrpNick := false
-			pmsg := TextMsg{
-				Event:     "GetGroupMemberList",
-				GroupWxid: jms.FromWxid,
-			}
-			rs := sendMsg(&pmsg)
-			grpMems := GroupMemberList{}
-			json.Unmarshal(rs, &grpMems)
-			mems := grpMems.Data
-			for _, mem := range mems {
-				if mem.Wxid == jms.FinalFromWxid {
-					if (mem.Group_nickname != "") {
-						pusherTitle = mem.Group_nickname
-						hasGrpNick = true
-					}
-					break
-				}
-			}
-			if !hasGrpNick {
-				pmsg = TextMsg{
-					Event:     "GetFriendList",
-				}
-				rs = sendMsg(&pmsg)
-				friends := FriendList{}
-				json.Unmarshal(rs, &friends)
-				frds := friends.Data
-				for _, friend := range frds {
-					if friend.Wxid == jms.FinalFromWxid {
-						if (friend.Remark != "") {
-							pusherTitle = friend.Remark
-						}
-						break
-					}
-				}
-			}
-			pusherTitle = fmt.Sprintf("%s@%s", pusherTitle, jms.FromName)
-		}
 
 		msgBk := fmt.Sprintf("%s", jms.Msg)
 		// msgBk := "[@at,nickname=EVAN,wxid=wxid_358hvbqajw2f12]  [@at,nickname=BBB,wxid=wxid_358hvbqajw2f13] [@at,nickname=CCC,wxid=wxid_358hvbqajw2f14]	 ceshiceshi"
 		atOld := regexp.MustCompile(`\[@at,(.+?)\]`).FindAllStringSubmatch(msgBk, -1)
 		atNew := regexp.MustCompile(`\[@at,nickname=(.+?),`).FindAllStringSubmatch(msgBk, -1)
-		// wxIds := regexp.MustCompile(`wxid=(.+?)\]`).FindAllStringSubmatch(msgBk, -1)
+		wxIds := regexp.MustCompile(`wxid=(.+?)\]`).FindAllStringSubmatch(msgBk, -1)
 	
-		for i, v := range atOld {
-			msgBk = strings.Replace(msgBk, v[0], fmt.Sprintf(`@%s `, atNew[i][1]), -1)
+		pusherTitle := jms.FinalFromName
+		if jms.FinalFromName != jms.FromName {
+			pusherTitle = getNickname(pusherTitle, jms.FinalFromWxid, jms.FromWxid)
+			pusherTitle = fmt.Sprintf("%s@%s", pusherTitle, jms.FromName)
+
+			for i, v := range atOld {
+				msgBk = strings.Replace(msgBk, v[0], fmt.Sprintf(`@%s `, getNickname(atNew[i][1], wxIds[i][1], jms.FromWxid)), -1)
+			}
 		}
 		// fmt.Println(msgBk)
 		// for i, v := range wxIds {
